@@ -1,0 +1,143 @@
+# =============================================================================
+# Reusable: Claude security agent
+# =============================================================================
+# Orchestrates the full shift-left review for a PR or push:
+#   1. scan      -> reusable/sast-sca-iac.yml produces SARIF + findings.json
+#   2. claude    -> anthropics/claude-code-action reviews diff + findings, posts
+#                   line-level comments, and (for trivial fixes) opens remediation PRs
+#   3. gate      -> scripts/severity_gate.py blocks the merge on critical/high
+#   4. notify    -> reusable/notify.yml dispatches Slack / Jira / ADO / GitHub Issue
+#
+# Adopt in a downstream repo with `uses:` + `secrets: inherit`. See examples/.
+# =============================================================================
+name: reusable-claude-security-agent
+
+on:
+  workflow_call:
+    inputs:
+      production:
+        description: "Production repo -> stricter gates (2 approvers, auto Jira+ADO)"
+        type: boolean
+        required: false
+        default: false
+      block-threshold:
+        description: "Lowest severity that blocks the merge (critical|high|medium)"
+        type: string
+        required: false
+        default: high
+      prompt-path:
+        description: "Path to the agent instruction file"
+        type: string
+        required: false
+        default: .github/claude-security/claude-security-prompt.md
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+      SLACK_WEBHOOK_URL:
+        required: false
+      SEMGREP_APP_TOKEN:
+        required: false
+
+permissions:
+  contents: write          # open remediation PRs
+  pull-requests: write      # line-level comments + summary
+  issues: write             # GitHub Issue tickets
+  security-events: write    # SARIF upload
+  id-token: write           # OIDC (cloud auth in downstream deploy gate)
+
+jobs:
+  scan:
+    name: Scan & triage
+    uses: ./.github/workflows/reusable/sast-sca-iac.yml
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    secrets: inherit
+
+  claude:
+    name: Claude security review
+    needs: scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    if: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download findings
+        uses: actions/download-artifact@v4
+        with:
+          name: findings
+          path: .
+
+      - name: Compose agent prompt
+        id: prompt
+        run: |
+          {
+            echo "PROMPT<<__EOF__"
+            cat "${{ inputs.prompt-path }}"
+            echo ""
+            echo "## Findings for this run (normalized from SARIF)"
+            echo '```json'
+            cat findings.json 2>/dev/null || echo "[]"
+            echo '```'
+            echo ""
+            echo "Production repo: ${{ inputs.production }}"
+            echo "__EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude security agent
+        if: ${{ env.HAS_KEY == 'true' }}
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: ${{ steps.prompt.outputs.PROMPT }}
+          claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Read,Grep"'
+
+      - name: Note when no API key configured
+        if: ${{ secrets.ANTHROPIC_API_KEY == '' }}
+        run: echo "::warning::ANTHROPIC_API_KEY not set — skipping Claude review; scanners + gate still run."
+
+  gate:
+    name: Severity gate
+    needs: [scan, claude]
+    if: always()
+    runs-on: ubuntu-24.04
+    outputs:
+      decision: ${{ steps.gate.outputs.decision }}
+      critical: ${{ steps.gate.outputs.critical }}
+      high: ${{ steps.gate.outputs.high }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download findings
+        uses: actions/download-artifact@v4
+        with:
+          name: findings
+          path: .
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run severity gate
+        id: gate
+        run: |
+          python scripts/severity_gate.py \
+            --findings findings.json \
+            --production "${{ inputs.production }}" \
+            --block-threshold "${{ inputs.block-threshold }}"
+
+  notify:
+    name: Notify
+    needs: [scan, gate]
+    if: ${{ always() && (needs.gate.outputs.critical != '0' || needs.gate.outputs.high != '0') }}
+    uses: ./.github/workflows/reusable/notify.yml
+    with:
+      production: ${{ inputs.production }}
+    secrets: inherit

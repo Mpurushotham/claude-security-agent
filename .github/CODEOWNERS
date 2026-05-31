@@ -1,0 +1,8 @@
+# Security team owns the agent behavior, workflows, gating logic, and policies.
+# Replace @your-org/security with your real team handle before enabling.
+
+*                                   @your-org/security
+/.github/claude-security/           @your-org/security
+/.github/workflows/                 @your-org/security
+/scripts/                           @your-org/security
+/policies/                          @your-org/security

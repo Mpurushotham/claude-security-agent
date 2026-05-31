@@ -1,0 +1,69 @@
+# =============================================================================
+# Reusable: OIDC least-privilege deploy gate (AWS / Azure / GCP)
+# =============================================================================
+# Authenticates to a cloud using short-lived OIDC tokens only — NO long-lived secrets.
+# The caller selects the cloud and environment; trust must be configured per docs/oidc-setup.md.
+# This runs only after the security gate passes (caller's `needs:`).
+# =============================================================================
+name: reusable-oidc-deploy
+
+on:
+  workflow_call:
+    inputs:
+      cloud:
+        description: "aws | azure | gcp"
+        type: string
+        required: true
+      environment:
+        description: "Deployment environment (e.g. dev, prod)"
+        type: string
+        required: false
+        default: dev
+      command:
+        description: "Deploy command to run after auth (e.g. terraform apply -auto-approve)"
+        type: string
+        required: false
+        default: "echo 'no deploy command provided'"
+
+permissions:
+  contents: read
+  id-token: write   # REQUIRED for OIDC — short-lived credentials only
+
+jobs:
+  deploy:
+    name: OIDC deploy (${{ inputs.cloud }}/${{ inputs.environment }})
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---- AWS ----------------------------------------------------------------
+      - name: Configure AWS credentials (OIDC)
+        if: ${{ inputs.cloud == 'aws' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ inputs.environment }}-cicd-deploy-role
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          # No aws-access-key-id / secret — OIDC only.
+
+      # ---- Azure --------------------------------------------------------------
+      - name: Azure login (OIDC)
+        if: ${{ inputs.cloud == 'azure' }}
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ---- GCP ----------------------------------------------------------------
+      - name: GCP auth (Workload Identity Federation)
+        if: ${{ inputs.cloud == 'gcp' }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - name: Run deploy command
+        run: ${{ inputs.command }}

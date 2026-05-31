@@ -1,0 +1,139 @@
+# =============================================================================
+# Reusable: SAST + SCA + IaC scanning -> SARIF
+# =============================================================================
+# Runs Semgrep (SAST/OWASP), Trivy (filesystem SCA + IaC config), and Checkov (IaC),
+# uploads each SARIF to the Security tab, and produces a normalized findings.json
+# artifact via scripts/triage.py for downstream gating / Claude triage / notify.
+#
+# CVSS thresholds (org-wide): >= 9.0 critical (block) | 7.0-8.9 high | < 7.0 info.
+# =============================================================================
+name: reusable-sast-sca-iac
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to scan"
+        type: string
+        required: false
+        default: ""
+    outputs:
+      critical:
+        description: "Count of critical findings"
+        value: ${{ jobs.triage.outputs.critical }}
+      high:
+        description: "Count of high findings"
+        value: ${{ jobs.triage.outputs.high }}
+
+permissions:
+  contents: read
+  security-events: write   # upload SARIF
+  actions: read
+
+jobs:
+  scan:
+    name: Scan (Semgrep / Trivy / Checkov)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Semgrep (OWASP Top-10 + CI rulesets)
+        uses: semgrep/semgrep-action@v1
+        continue-on-error: true
+        with:
+          config: >-
+            p/owasp-top-ten
+            p/ci
+            p/secrets
+          generateSarif: "true"
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      - name: Trivy filesystem (vuln + secret + misconfig)
+        uses: aquasecurity/trivy-action@0.28.0
+        continue-on-error: true
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          format: sarif
+          output: trivy.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+
+      - name: Checkov (IaC)
+        uses: bridgecrewio/checkov-action@v12
+        continue-on-error: true
+        with:
+          directory: .
+          output_format: sarif
+          output_file_path: checkov.sarif
+
+      - name: Collect SARIF
+        if: always()
+        run: |
+          mkdir -p .scan-out
+          # semgrep writes semgrep.sarif; checkov action writes results/results_sarif.sarif
+          [ -f semgrep.sarif ] && cp semgrep.sarif .scan-out/ || true
+          [ -f trivy.sarif ] && cp trivy.sarif .scan-out/ || true
+          find . -name '*.sarif' -path '*checkov*' -exec cp {} .scan-out/checkov.sarif \; || true
+          ls -la .scan-out || true
+
+      - name: Upload SARIF to Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
+        with:
+          sarif_file: .scan-out
+
+      - name: Upload SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarif-out
+          path: .scan-out
+          retention-days: 7
+
+  triage:
+    name: Normalize findings
+    needs: scan
+    runs-on: ubuntu-24.04
+    if: always()
+    outputs:
+      critical: ${{ steps.gate.outputs.critical }}
+      high: ${{ steps.gate.outputs.high }}
+    steps:
+      - name: Checkout (for scripts)
+        uses: actions/checkout@v4
+
+      - name: Download SARIF
+        uses: actions/download-artifact@v4
+        with:
+          name: sarif-out
+          path: .scan-out
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Triage SARIF -> findings.json
+        run: |
+          python scripts/triage.py \
+            --repo "${{ github.repository }}" \
+            --sarif-dir .scan-out \
+            --out findings.json
+
+      - name: Severity counts
+        id: gate
+        run: python scripts/severity_gate.py --findings findings.json --production false || true
+
+      - name: Upload findings.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: findings
+          path: findings.json
+          retention-days: 7

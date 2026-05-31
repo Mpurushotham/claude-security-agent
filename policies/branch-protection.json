@@ -1,0 +1,39 @@
+{
+  "_comment": "Apply with: gh api -X POST repos/{owner}/{repo}/rulesets --input policies/branch-protection.json. Replace {owner}/{repo}. See docs/onboarding.md.",
+  "name": "claude-security-agent-protection",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["~DEFAULT_BRANCH", "refs/heads/main", "refs/heads/release/*"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 2,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": true,
+        "require_last_push_approval": true,
+        "required_review_thread_resolution": true
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [
+          { "context": "Claude Security Review / security" },
+          { "context": "CodeQL / Analyze (python)" },
+          { "context": "CodeQL / Analyze (actions)" },
+          { "context": "Dependency Review / Dependency review" },
+          { "context": "Secret Scan / secret-scan" }
+        ]
+      }
+    }
+  ]
+}

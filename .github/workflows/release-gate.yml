@@ -1,0 +1,83 @@
+# =============================================================================
+# Caller: Release gate — severity-gated release with SBOM + keyless signing
+# =============================================================================
+# A release tag only proceeds if a final security scan finds no critical/high issues.
+# Generates an SBOM (Syft), signs artifacts with cosign (keyless OIDC), and creates a
+# GitHub Release. Production release rules: block on any unresolved critical/high CVE.
+# =============================================================================
+name: Release Gate
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write        # create GitHub Release
+  id-token: write         # cosign keyless signing (OIDC)
+  security-events: write
+  packages: write
+
+jobs:
+  scan:
+    name: Pre-release scan & triage
+    uses: ./.github/workflows/reusable/sast-sca-iac.yml
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    secrets: inherit
+
+  gate:
+    name: Release severity gate
+    needs: scan
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download findings
+        uses: actions/download-artifact@v4
+        with:
+          name: findings
+          path: .
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Gate (block release on critical/high)
+        run: |
+          python scripts/severity_gate.py \
+            --findings findings.json \
+            --production true \
+            --block-threshold high
+
+  release:
+    name: SBOM, sign, publish
+    needs: gate
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate SBOM (Syft, CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign SBOM (keyless, OIDC)
+        run: cosign sign-blob --yes sbom.cyclonedx.json --output-signature sbom.cyclonedx.json.sig
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            sbom.cyclonedx.json
+            sbom.cyclonedx.json.sig
+          generate_release_notes: true

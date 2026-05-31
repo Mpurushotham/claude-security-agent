@@ -1,0 +1,47 @@
+# =============================================================================
+# Example: drop this into a downstream repo at .github/workflows/security.yml
+# =============================================================================
+# Replace <org> with your GitHub org. Set ANTHROPIC_API_KEY (and Slack/Jira/ADO
+# secrets) at the org or repo level; `secrets: inherit` forwards them.
+# See docs/onboarding.md for the full checklist.
+# =============================================================================
+name: Security
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 8 * * *"   # daily production digest
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  security-events: write
+  id-token: write
+
+jobs:
+  security:
+    uses: <org>/claude-security-agent/.github/workflows/reusable/claude-security-agent.yml@main
+    with:
+      production: true        # stricter gates: 2 approvers + auto Jira/ADO
+      block-threshold: high   # critical|high|medium
+    secrets: inherit
+
+  # Optional: gate a deploy behind the security review using OIDC (no static creds).
+  deploy:
+    needs: security
+    if: ${{ github.ref == 'refs/heads/main' }}
+    uses: <org>/claude-security-agent/.github/workflows/reusable/oidc-deploy.yml@main
+    with:
+      cloud: aws              # aws | azure | gcp
+      environment: prod
+      command: "echo 'replace with: terraform apply -auto-approve'"
+    secrets: inherit

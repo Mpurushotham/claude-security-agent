@@ -1,0 +1,37 @@
+# =============================================================================
+# Caller: Claude security review (runs on this repo; also the canonical example)
+# =============================================================================
+# Triggers the reusable Claude security agent on every PR, on pushes to protected
+# branches, on a weekly schedule, and on demand. A daily production digest is sent
+# via the scheduled run.
+# =============================================================================
+name: Claude Security Review
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 8 * * *"   # daily production digest @ 08:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: claude-security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  security-events: write
+  id-token: write
+
+jobs:
+  security:
+    uses: ./.github/workflows/reusable/claude-security-agent.yml
+    with:
+      production: true
+      block-threshold: high
+    secrets: inherit

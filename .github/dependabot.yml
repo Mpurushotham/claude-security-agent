@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Keep the reusable workflows' actions patched.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ["dependencies", "security"]
+    open-pull-requests-limit: 10
+
+  # Python tooling used by scripts/ (if a requirements file is added).
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ["dependencies", "security"]
+    open-pull-requests-limit: 10
