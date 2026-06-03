@@ -6,6 +6,9 @@ automatically reviewed for OWASP Top-10 issues, scanned with GitHub Advanced Sec
 (CodeQL, Dependabot, secret push protection), gated by severity, and — for critical/high
 findings — escalated to Slack, Jira, and Azure DevOps.
 
+> **New here / just got access?** Start with [`docs/getting-started.md`](docs/getting-started.md),
+> then browse the full [documentation index](docs/README.md).
+
 ## What it does
 
 - **Shift-left security review** on every PR/push: SAST (CodeQL + Semgrep), SCA

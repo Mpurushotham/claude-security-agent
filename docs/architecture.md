@@ -45,6 +45,40 @@ flowchart TD
   REL --> DEP[oidc-deploy.yml<br/>AWS / Azure / GCP, OIDC only]
 ```
 
+## Sequence — a single pull request
+
+What actually happens, in order, when a developer opens a PR in a consumer repo:
+
+```mermaid
+sequenceDiagram
+  actor Dev as Developer
+  participant GH as GitHub (consumer repo)
+  participant Agent as claude-security-agent (reusable)
+  participant Scan as Scanners (Semgrep/Trivy/Checkov/CodeQL)
+  participant Triage as triage.py
+  participant Claude as Claude (claude-code-action)
+  participant Gate as severity_gate.py
+  participant Notify as notify.yml
+
+  Dev->>GH: Open / update pull request
+  GH->>Agent: Trigger reusable workflow (secrets: inherit)
+  Agent->>Scan: Run SAST + SCA + IaC + secret scans
+  Scan-->>Agent: SARIF (per scanner)
+  Agent->>Triage: Normalize SARIF
+  Triage-->>Agent: findings.json (severity + CWE)
+  Agent->>Claude: Prompt + diff + findings
+  Claude-->>GH: Line-level comments, summary, remediation PR
+  Agent->>Gate: Evaluate findings.json
+  alt critical / high present
+    Gate-->>GH: exit 1 — required check fails (merge blocked)
+    Agent->>Notify: Dispatch alerts
+    Notify-->>Dev: Slack + Jira + ADO + GitHub Issue
+  else clean / medium-low only
+    Gate-->>GH: exit 0 — check passes
+    GH-->>Dev: Mergeable once approvals satisfied
+  end
+```
+
 ## Components
 
 | Stage | Workflow / script | Output |
