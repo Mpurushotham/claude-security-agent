@@ -48,7 +48,7 @@ permissions:
 jobs:
   scan:
     name: Scan & triage
-    uses: ./.github/workflows/reusable/sast-sca-iac.yml
+    uses: ./.github/workflows/reusable-sast-sca-iac.yml
     permissions:
       contents: read
       security-events: write
@@ -61,6 +61,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     if: ${{ github.event_name == 'pull_request' }}
+    env:
+      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,8 +91,6 @@ jobs:
 
       - name: Run Claude security agent
         if: ${{ env.HAS_KEY == 'true' }}
-        env:
-          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -98,7 +98,7 @@ jobs:
           claude_args: '--allowed-tools "Bash(gh pr comment:*),Bash(gh pr diff:*),Read,Grep"'
 
       - name: Note when no API key configured
-        if: ${{ secrets.ANTHROPIC_API_KEY == '' }}
+        if: ${{ env.HAS_KEY != 'true' }}
         run: echo "::warning::ANTHROPIC_API_KEY not set — skipping Claude review; scanners + gate still run."
 
   gate:
@@ -137,7 +137,7 @@ jobs:
     name: Notify
     needs: [scan, gate]
     if: ${{ always() && (needs.gate.outputs.critical != '0' || needs.gate.outputs.high != '0') }}
-    uses: ./.github/workflows/reusable/notify.yml
+    uses: ./.github/workflows/reusable-notify.yml
     with:
       production: ${{ inputs.production }}
     secrets: inherit

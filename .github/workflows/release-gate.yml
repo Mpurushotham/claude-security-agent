@@ -21,7 +21,7 @@ permissions:
 jobs:
   scan:
     name: Pre-release scan & triage
-    uses: ./.github/workflows/reusable/sast-sca-iac.yml
+    uses: ./.github/workflows/reusable-sast-sca-iac.yml
     permissions:
       contents: read
       security-events: write

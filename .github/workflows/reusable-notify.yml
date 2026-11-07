@@ -22,6 +22,20 @@ on:
     secrets:
       SLACK_WEBHOOK_URL:
         required: false
+      JIRA_BASE_URL:
+        required: false
+      JIRA_USER:
+        required: false
+      JIRA_TOKEN:
+        required: false
+      JIRA_PROJECT:
+        required: false
+      ADO_ORG_URL:
+        required: false
+      ADO_PROJECT:
+        required: false
+      ADO_PAT:
+        required: false
 
 permissions:
   contents: read

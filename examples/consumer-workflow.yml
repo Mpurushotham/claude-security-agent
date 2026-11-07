@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   security:
-    uses: <org>/claude-security-agent/.github/workflows/reusable/claude-security-agent.yml@main
+    uses: <org>/claude-security-agent/.github/workflows/reusable-claude-security-agent.yml@main
     with:
       production: true        # stricter gates: 2 approvers + auto Jira/ADO
       block-threshold: high   # critical|high|medium
@@ -39,7 +39,7 @@ jobs:
   deploy:
     needs: security
     if: ${{ github.ref == 'refs/heads/main' }}
-    uses: <org>/claude-security-agent/.github/workflows/reusable/oidc-deploy.yml@main
+    uses: <org>/claude-security-agent/.github/workflows/reusable-oidc-deploy.yml@main
     with:
       cloud: aws              # aws | azure | gcp
       environment: prod

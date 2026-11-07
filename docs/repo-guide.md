@@ -26,7 +26,7 @@ claude-security-agent/
 | ---- | ------------ | --------- |
 | `.github/claude-security/claude-security-prompt.md` | The **single source of truth** for the agent's behavior — context, ranked goals, rules, output JSON schema, severity gates, notifications. Passed verbatim to `claude-code-action`. | You want to change *what the agent flags or how it comments*. **Start here, not the YAML.** |
 
-## Reusable workflows (`.github/workflows/reusable/`)
+## Reusable workflows (`.github/workflows/reusable-*.yml`)
 
 These are the org-level building blocks. Consumer repos `uses:` them with `secrets: inherit`.
 
@@ -90,8 +90,8 @@ Pure Python, no third-party deps (uses only the standard library), runnable loca
 | ---------- | ------- |
 | Change what the agent flags / how it comments | `.github/claude-security/claude-security-prompt.md` |
 | Change what blocks a merge | `scripts/severity_gate.py` + `policies/severity-matrix.md` |
-| Add a scanner | `.github/workflows/reusable/sast-sca-iac.yml` |
-| Add/modify an alert channel | `.github/workflows/reusable/notify.yml` + the matching `scripts/*` |
-| Add a cloud or change deploy auth | `.github/workflows/reusable/oidc-deploy.yml` + `docs/oidc-setup.md` |
+| Add a scanner | `.github/workflows/reusable-sast-sca-iac.yml` |
+| Add/modify an alert channel | `.github/workflows/reusable-notify.yml` + the matching `scripts/*` |
+| Add a cloud or change deploy auth | `.github/workflows/reusable-oidc-deploy.yml` + `docs/oidc-setup.md` |
 | Change required checks / approvals | `policies/branch-protection.json` |
 | Adopt the agent in another repo | `examples/consumer-workflow.yml` + `docs/onboarding.md` |
