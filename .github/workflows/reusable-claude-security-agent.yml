@@ -2,7 +2,7 @@
 # Reusable: Claude security agent
 # =============================================================================
 # Orchestrates the full shift-left review for a PR or push:
-#   1. scan      -> reusable/sast-sca-iac.yml produces SARIF + findings.json
+#   1. scan      -> reusable-sast-sca-iac.yml produces SARIF + findings.json
 #   2. claude    -> anthropics/claude-code-action reviews diff + findings, posts
 #                   line-level comments, and (for trivial fixes) opens remediation PRs
 #   3. gate      -> scripts/severity_gate.py blocks the merge on critical/high
