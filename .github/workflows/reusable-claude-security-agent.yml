@@ -44,6 +44,7 @@ permissions:
   issues: write             # GitHub Issue tickets
   security-events: write    # SARIF upload
   id-token: write           # OIDC (cloud auth in downstream deploy gate)
+  actions: read             # nested scan job reads workflow artifacts
 
 jobs:
   scan:
