@@ -9,7 +9,7 @@ steps by role. Budget ~30 minutes.
 - **It is** the org's automated security reviewer, shipped as **reusable GitHub Actions
   workflows** plus the Claude agent's instructions. Other repos call it; it reviews their PRs.
 - **It is not** an application. There's no server to run. The "product" is the workflows in
-  `.github/workflows/reusable/`, the agent prompt, and the helper scripts.
+  `.github/workflows/reusable-*.yml`, the agent prompt, and the helper scripts.
 - **Behavior lives in one file:** `.github/claude-security/claude-security-prompt.md`. If you
   want to change *what the agent flags or how it comments*, that's the file — not the YAML.
 
@@ -19,7 +19,7 @@ steps by role. Budget ~30 minutes.
 flowchart TD
   subgraph This repo
     P[Agent prompt<br/>.github/claude-security/]
-    R[Reusable workflows<br/>.github/workflows/reusable/]
+    R[Reusable workflows<br/>.github/workflows/reusable-*.yml]
     S[Scripts<br/>scripts/]
     POL[Policies<br/>policies/]
   end

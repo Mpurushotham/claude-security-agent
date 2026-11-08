@@ -55,7 +55,7 @@ jobs:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
       - name: Trivy filesystem (vuln + secret + misconfig)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         continue-on-error: true
         with:
           scan-type: fs
@@ -75,26 +75,26 @@ jobs:
       - name: Collect SARIF
         if: always()
         run: |
-          mkdir -p .scan-out
+          mkdir -p scan-out
           # semgrep writes semgrep.sarif; checkov action writes results/results_sarif.sarif
-          [ -f semgrep.sarif ] && cp semgrep.sarif .scan-out/ || true
-          [ -f trivy.sarif ] && cp trivy.sarif .scan-out/ || true
-          find . -name '*.sarif' -path '*checkov*' -exec cp {} .scan-out/checkov.sarif \; || true
-          ls -la .scan-out || true
+          [ -f semgrep.sarif ] && cp semgrep.sarif scan-out/ || true
+          [ -f trivy.sarif ] && cp trivy.sarif scan-out/ || true
+          find . -name '*.sarif' -path '*checkov*' -exec cp {} scan-out/checkov.sarif \; || true
+          ls -la scan-out || true
 
       - name: Upload SARIF to Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         continue-on-error: true
         with:
-          sarif_file: .scan-out
+          sarif_file: scan-out
 
       - name: Upload SARIF artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sarif-out
-          path: .scan-out
+          path: scan-out
           retention-days: 7
 
   triage:
@@ -113,7 +113,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: sarif-out
-          path: .scan-out
+          path: scan-out
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -124,7 +124,7 @@ jobs:
         run: |
           python scripts/triage.py \
             --repo "${{ github.repository }}" \
-            --sarif-dir .scan-out \
+            --sarif-dir scan-out \
             --out findings.json
 
       - name: Severity counts

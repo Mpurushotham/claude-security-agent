@@ -9,7 +9,7 @@ venv/
 *.sarif
 findings*.json
 sbom*.json
-.scan-out/
+scan-out/
 
 # Secrets / local config (never commit)
 .env

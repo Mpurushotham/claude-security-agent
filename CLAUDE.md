@@ -11,7 +11,7 @@ gates by severity, and escalates critical/high findings to Slack/Jira/ADO.
 
 - **Agent behavior**: defined entirely in `.github/claude-security/claude-security-prompt.md`
   — the single source of truth. Change behavior there, not in workflow YAML.
-- **CI/CD**: GitHub Actions. Reusable building blocks under `.github/workflows/reusable/`;
+- **CI/CD**: GitHub Actions. Reusable building blocks under `.github/workflows/reusable-*.yml`;
   this repo's own callers at `.github/workflows/*.yml` double as worked examples.
 - **Auth**: GitHub Actions → AWS/Azure/GCP via OIDC only — no long-lived cloud credentials.
 

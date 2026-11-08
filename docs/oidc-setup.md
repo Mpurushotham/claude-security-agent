@@ -1,6 +1,6 @@
 # OIDC setup (AWS / Azure / GCP)
 
-The deploy gate (`.github/workflows/reusable/oidc-deploy.yml`) authenticates with
+The deploy gate (`.github/workflows/reusable-oidc-deploy.yml`) authenticates with
 **short-lived OIDC tokens only**. Never store long-lived cloud credentials as secrets. Each
 cloud needs a one-time trust relationship with GitHub's OIDC provider
 (`https://token.actions.githubusercontent.com`).

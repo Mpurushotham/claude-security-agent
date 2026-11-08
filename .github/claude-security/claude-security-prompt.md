@@ -2,7 +2,7 @@
 
 > This file is the **single source of truth** for the automated security reviewer's
 > behavior. It is passed verbatim as the agent's instructions by
-> `.github/workflows/reusable/claude-security-agent.yml`. Edit this file to change how
+> `.github/workflows/reusable-claude-security-agent.yml`. Edit this file to change how
 > the agent triages, gates, and reports — do not fork the behavior into workflow YAML.
 
 ## Context

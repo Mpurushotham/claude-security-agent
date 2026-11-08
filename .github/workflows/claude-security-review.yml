@@ -27,10 +27,11 @@ permissions:
   issues: write
   security-events: write
   id-token: write
+  actions: read
 
 jobs:
   security:
-    uses: ./.github/workflows/reusable/claude-security-agent.yml
+    uses: ./.github/workflows/reusable-claude-security-agent.yml
     with:
       production: true
       block-threshold: high

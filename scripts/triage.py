@@ -8,7 +8,7 @@ the Claude agent, and the notifier to consume.
 
 Usage:
     python scripts/triage.py --repo owner/name --sarif a.sarif --sarif b.sarif --out findings.json
-    python scripts/triage.py --repo owner/name --sarif-dir .scan-out --out findings.json
+    python scripts/triage.py --repo owner/name --sarif-dir scan-out --out findings.json
 """
 from __future__ import annotations
 

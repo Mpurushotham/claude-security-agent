@@ -21,7 +21,7 @@ permissions:
   id-token: write
 jobs:
   security:
-    uses: <org>/claude-security-agent/.github/workflows/reusable/claude-security-agent.yml@main
+    uses: <org>/claude-security-agent/.github/workflows/reusable-claude-security-agent.yml@main
     with:
       production: true        # stricter gates + auto Jira/ADO
       block-threshold: high

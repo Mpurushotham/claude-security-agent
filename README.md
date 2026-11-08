@@ -46,7 +46,7 @@ repo's `.github/workflows/`. Minimal form:
 ```yaml
 jobs:
   security:
-    uses: <org>/claude-security-agent/.github/workflows/reusable/claude-security-agent.yml@main
+    uses: <org>/claude-security-agent/.github/workflows/reusable-claude-security-agent.yml@main
     with:
       production: true
     secrets: inherit
@@ -71,7 +71,7 @@ See [`docs/oidc-setup.md`](docs/oidc-setup.md) for per-cloud OIDC trust configur
 | Path | Purpose |
 | ---- | ------- |
 | `.github/claude-security/claude-security-prompt.md` | The agent's behavior (single source of truth) |
-| `.github/workflows/reusable/` | Reusable (`workflow_call`) building blocks |
+| `.github/workflows/reusable-*.yml` | Reusable (`workflow_call`) building blocks |
 | `.github/workflows/*.yml` | This repo's own callers (also serve as examples) |
 | `scripts/` | Triage, severity gate, and notifier scripts |
 | `policies/` | Severity matrix, branch-protection ruleset, OPA policies |
